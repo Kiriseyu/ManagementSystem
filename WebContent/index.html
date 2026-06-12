@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人事管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>人事管理系统</h1>
+            <div class="header-actions">
+                <div id="user-info" class="user-info" style="display: none;">
+                    <span id="username-display"></span>
+                    <button class="btn btn-secondary btn-sm" onclick="logout()">退出登录</button>
+                </div>
+                <div class="theme-toggle" onclick="toggleTheme()">
+                    <span class="icon">●</span>
+                    <span class="text">深色/浅色</span>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="index.html" class="active">首页</a></li>
+                <li><a href="employee.html">员工管理</a></li>
+                <li><a href="department.html">部门管理</a></li>
+                <li><a href="attendance.html">考勤管理</a></li>
+                <li><a href="salary.html">薪资管理</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="content">
+            <div class="welcome-section">
+                <h2>欢迎使用人事管理系统</h2>
+                <p>高效管理您的人力资源，简化人事管理流程</p>
+                
+                <div class="dashboard-cards">
+                    <a href="employee.html" class="card">
+                        <h3>员工管理</h3>
+                        <p>管理员工基本信息，包括增删改查操作</p>
+                    </a>
+                    <a href="department.html" class="card">
+                        <h3>部门管理</h3>
+                        <p>管理公司部门信息，维护组织架构</p>
+                    </a>
+                    <a href="attendance.html" class="card">
+                        <h3>考勤管理</h3>
+                        <p>记录和管理员工考勤信息</p>
+                    </a>
+                    <a href="salary.html" class="card">
+                        <h3>薪资管理</h3>
+                        <p>管理员工薪资信息，计算工资发放</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/common.js"></script>
+    <script>
+        function checkLogin() {
+            const username = sessionStorage.getItem('username');
+            if (!username) {
+                window.location.href = 'login.html';
+                return;
+            }
+            document.getElementById('username-display').textContent = `欢迎, ${username}`;
+            document.getElementById('user-info').style.display = 'flex';
+        }
+        
+        function logout() {
+            sessionStorage.removeItem('userId');
+            sessionStorage.removeItem('username');
+            sessionStorage.removeItem('role');
+            window.location.href = 'login.html';
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            checkLogin();
+        });
+    </script>
+</body>
+</html>

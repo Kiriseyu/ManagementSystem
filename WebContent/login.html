@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 人事管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .login-box {
+            width: 100%;
+            max-width: 420px;
+            background-color: var(--bg-card);
+            padding: 40px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        
+        .theme-toggle-login {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.25s ease;
+        }
+        
+        .theme-toggle-login:hover {
+            background-color: var(--accent-subtle);
+            border-color: var(--accent-border);
+            color: var(--accent-primary);
+        }
+        
+        .theme-toggle-login .icon {
+            font-size: 14px;
+            transition: transform 0.35s ease;
+        }
+        
+        [data-theme="dark"] .theme-toggle-login .icon {
+            transform: rotate(180deg);
+        }
+        
+        .login-tabs {
+            display: flex;
+            margin-bottom: 32px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .login-tab {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: none;
+            border: none;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .login-tab.active {
+            color: var(--accent-primary);
+        }
+        
+        .login-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 20%;
+            right: 20%;
+            height: 2px;
+            background-color: var(--accent-primary);
+            border-radius: 1px;
+        }
+        
+        .login-tab:hover {
+            color: var(--accent-primary);
+        }
+        
+        .login-form {
+            display: none;
+        }
+        
+        .login-form.active {
+            display: block;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .login-header h1 {
+            font-size: 24px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        
+        .login-header p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        
+        .role-selector {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .role-btn {
+            flex: 1;
+            padding: 16px 12px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background-color: transparent;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .role-btn .role-icon {
+            font-size: 20px;
+        }
+        
+        .role-btn .role-label {
+            font-size: 14px;
+        }
+        
+        .role-btn .role-desc {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+        
+        .role-btn.active {
+            border-color: var(--accent-primary);
+            background-color: var(--accent-subtle);
+            color: var(--accent-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        
+        .role-btn.admin.active {
+            border-color: #f59e0b;
+            background-color: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+        }
+        
+        .role-btn:hover {
+            border-color: var(--accent-border);
+            transform: translateY(-1px);
+        }
+        
+        .role-btn.admin:hover {
+            border-color: #f59e0b;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px var(--accent-subtle);
+        }
+        
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+        
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: var(--gradient-card);
+            color: var(--text-inverse);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 8px;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-login:active {
+            transform: translateY(0);
+        }
+        
+        .forgot-link {
+            text-align: right;
+            margin-top: 12px;
+        }
+        
+        .forgot-link a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .forgot-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .divider {
+            text-align: center;
+            margin: 24px 0;
+            position: relative;
+        }
+        
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background-color: var(--border-color);
+        }
+        
+        .divider::before {
+            left: 0;
+        }
+        
+        .divider::after {
+            right: 0;
+        }
+        
+        .divider span {
+            display: inline-block;
+            background-color: var(--bg-card);
+            padding: 0 12px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+        
+        .btn-register {
+            width: 100%;
+            padding: 14px;
+            background-color: transparent;
+            color: var(--accent-primary);
+            border: 2px solid var(--accent-primary);
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-register:hover {
+            background-color: var(--accent-subtle);
+        }
+        
+        .error-message {
+            color: var(--danger);
+            font-size: 13px;
+            margin-bottom: 16px;
+            text-align: center;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="theme-toggle-login" onclick="toggleTheme()">
+                <span class="icon">●</span>
+                <span class="text">深色/浅色</span>
+            </div>
+            
+            <div class="login-header">
+                <h1>人事管理系统</h1>
+                <p>欢迎登录，管理您的人力资源</p>
+            </div>
+            
+            <div class="login-tabs">
+                <button class="login-tab active" onclick="showTab('login')">登录</button>
+                <button class="login-tab" onclick="showTab('register')">注册</button>
+            </div>
+            
+            <div id="login-form" class="login-form active">
+                <div class="role-selector">
+                    <button class="role-btn active" id="role-user" onclick="selectRole('user')">
+                        <span class="role-icon">U</span>
+                        <span class="role-label">用户登录</span>
+                        <span class="role-desc">普通用户权限</span>
+                    </button>
+                    <button class="role-btn admin" id="role-admin" onclick="selectRole('admin')">
+                        <span class="role-icon">A</span>
+                        <span class="role-label">管理员登录</span>
+                        <span class="role-desc">完整管理权限</span>
+                    </button>
+                </div>
+                
+                <div class="error-message" id="login-error"></div>
+                
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="text" id="loginUsername" placeholder="请输入用户名" required>
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="loginPassword" placeholder="请输入密码" required>
+                    </div>
+                    <button type="submit" class="btn-login">登录</button>
+                    <div class="forgot-link">
+                        <a href="#">忘记密码？</a>
+                    </div>
+                </form>
+            </div>
+            
+            <div id="register-form" class="login-form">
+                <div class="error-message" id="register-error"></div>
+                
+                <form id="registerForm" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="text" id="regUsername" placeholder="请输入用户名" required>
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="regPassword" placeholder="请输入密码" required>
+                    </div>
+                    <div class="form-group">
+                        <label>确认密码</label>
+                        <input type="password" id="regConfirmPassword" placeholder="请再次输入密码" required>
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="regEmail" placeholder="请输入邮箱" required>
+                    </div>
+                    <button type="submit" class="btn-login">注册</button>
+                </form>
+                
+                <div class="divider">
+                    <span>或</span>
+                </div>
+                
+                <button class="btn-register" onclick="showTab('login')">返回登录</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentRole = 'user';
+        
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        });
+        
+        function showTab(tab) {
+            document.querySelectorAll('.login-tab').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.login-form').forEach(el => el.classList.remove('active'));
+            
+            document.querySelector(`.login-tab[onclick="showTab('${tab}')"]`).classList.add('active');
+            document.getElementById(`${tab}-form`).classList.add('active');
+            
+            if (tab === 'login') {
+                currentRole = 'user';
+                document.getElementById('role-user').classList.add('active');
+                document.getElementById('role-admin').classList.remove('active');
+            }
+        }
+        
+        function selectRole(role) {
+            currentRole = role;
+            document.getElementById('role-user').classList.toggle('active', role === 'user');
+            document.getElementById('role-admin').classList.toggle('active', role === 'admin');
+        }
+        
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const response = await fetch('api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        username,
+                        password,
+                        role: currentRole
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    sessionStorage.setItem('userId', data.userId);
+                    sessionStorage.setItem('username', data.username);
+                    sessionStorage.setItem('role', data.role);
+                    window.location.href = 'index.html';
+                } else {
+                    document.getElementById('login-error').textContent = data.error || '登录失败';
+                    document.getElementById('login-error').classList.add('show');
+                }
+            } catch (error) {
+                document.getElementById('login-error').textContent = '网络错误，请稍后重试';
+                document.getElementById('login-error').classList.add('show');
+            }
+        }
+        
+        async function handleRegister(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('regConfirmPassword').value;
+            const email = document.getElementById('regEmail').value;
+            
+            if (password !== confirmPassword) {
+                document.getElementById('register-error').textContent = '两次输入的密码不一致';
+                document.getElementById('register-error').classList.add('show');
+                return;
+            }
+            
+            try {
+                const response = await fetch('api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        username,
+                        password,
+                        email
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('注册成功，请登录');
+                    showTab('login');
+                } else {
+                    document.getElementById('register-error').textContent = data.error || '注册失败';
+                    document.getElementById('register-error').classList.add('show');
+                }
+            } catch (error) {
+                document.getElementById('register-error').textContent = '网络错误，请稍后重试';
+                document.getElementById('register-error').classList.add('show');
+            }
+        }
+    </script>
+</body>
+</html>

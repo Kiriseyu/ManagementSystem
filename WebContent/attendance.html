@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考勤管理 - 人事管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>人事管理系统</h1>
+            <div class="theme-toggle" onclick="toggleTheme()">
+                <span class="icon">●</span>
+                <span class="text">深色/浅色</span>
+            </div>
+        </div>
+    </header>
+    
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="index.html" onclick="navigateTo('index.html')">首页</a></li>
+                <li><a href="employee.html" onclick="navigateTo('employee.html')">员工管理</a></li>
+                <li><a href="department.html" onclick="navigateTo('department.html')">部门管理</a></li>
+                <li><a href="attendance.html" class="active" onclick="navigateTo('attendance.html')">考勤管理</a></li>
+                <li><a href="salary.html" onclick="navigateTo('salary.html')">薪资管理</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="content">
+            <h2 class="page-title">考勤管理</h2>
+            
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="openAddModal()">+ 添加考勤</button>
+            </div>
+            
+            <table id="attendanceTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>员工</th>
+                        <th>考勤日期</th>
+                        <th>签到时间</th>
+                        <th>签退时间</th>
+                        <th>状态</th>
+                        <th>备注</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="attendanceTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="attendanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">添加考勤</h2>
+                <span class="close" onclick="hideModal('attendanceModal')">&times;</span>
+            </div>
+            <form id="attendanceForm">
+                <input type="hidden" id="attId">
+                <div class="form-group">
+                    <label>员工 *</label>
+                    <select id="empId" required>
+                        <option value="">请选择</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>考勤日期</label>
+                    <input type="date" id="attDate">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>签到时间</label>
+                        <input type="datetime-local" id="checkInTime">
+                    </div>
+                    <div class="form-group">
+                        <label>签退时间</label>
+                        <input type="datetime-local" id="checkOutTime">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <select id="status">
+                        <option value="Normal">正常</option>
+                        <option value="Late">迟到</option>
+                        <option value="Early">早退</option>
+                        <option value="Leave">请假</option>
+                        <option value="Absent">旷工</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>备注</label>
+                    <input type="text" id="remark">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('attendanceModal')">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script src="js/common.js"></script>
+    <script>
+        let attendances = [];
+        let employees = [];
+        
+        async function loadEmployees() {
+            try {
+                employees = await fetchData('api/employee');
+                const select = document.getElementById('empId');
+                select.innerHTML = '<option value="">请选择</option>';
+                employees.forEach(emp => {
+                    select.innerHTML += `<option value="${emp.empId}">${emp.empName}</option>`;
+                });
+            } catch (e) {}
+        }
+        
+        async function loadAttendances() {
+            try {
+                attendances = await fetchData('api/attendance');
+                renderAttendances();
+            } catch (e) {}
+        }
+        
+        function renderAttendances() {
+            const tbody = document.getElementById('attendanceTableBody');
+            tbody.innerHTML = '';
+            attendances.forEach(att => {
+                const emp = employees.find(e => e.empId === att.empId);
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${att.attId}</td>
+                        <td>${emp ? emp.empName : '-'}</td>
+                        <td>${formatDate(att.attDate)}</td>
+                        <td>${formatDateTime(att.checkInTime)}</td>
+                        <td>${formatDateTime(att.checkOutTime)}</td>
+                        <td>${statusMap(att.status)}</td>
+                        <td>${att.remark}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn btn-warning btn-sm" onclick="openEditModal(${att.attId})">编辑</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteAttendance(${att.attId})">删除</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = '添加考勤';
+            document.getElementById('attendanceForm').reset();
+            document.getElementById('attId').value = '';
+            showModal('attendanceModal');
+        }
+        
+        async function openEditModal(id) {
+            try {
+                const att = await fetchData(`api/attendance?id=${id}`);
+                document.getElementById('modalTitle').textContent = '编辑考勤';
+                document.getElementById('attId').value = att.attId;
+                document.getElementById('empId').value = att.empId;
+                document.getElementById('attDate').value = formatDate(att.attDate);
+                document.getElementById('checkInTime').value = att.checkInTime ? att.checkInTime.replace(' ', 'T') : '';
+                document.getElementById('checkOutTime').value = att.checkOutTime ? att.checkOutTime.replace(' ', 'T') : '';
+                document.getElementById('status').value = att.status;
+                document.getElementById('remark').value = att.remark;
+                showModal('attendanceModal');
+            } catch (e) {}
+        }
+        
+        async function deleteAttendance(id) {
+            if (!confirm('确定要删除该考勤记录吗？')) return;
+            try {
+                await fetchData(`api/attendance?id=${id}`, { method: 'DELETE' });
+                showMessage('删除成功');
+                loadAttendances();
+            } catch (e) {}
+        }
+        
+        document.getElementById('attendanceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const attId = document.getElementById('attId').value;
+            const formData = new URLSearchParams();
+            formData.append('empId', document.getElementById('empId').value);
+            formData.append('attDate', document.getElementById('attDate').value);
+            formData.append('checkInTime', document.getElementById('checkInTime').value.replace('T', ' '));
+            formData.append('checkOutTime', document.getElementById('checkOutTime').value.replace('T', ' '));
+            formData.append('status', document.getElementById('status').value);
+            formData.append('remark', document.getElementById('remark').value);
+            
+            try {
+                if (attId) {
+                    formData.append('attId', attId);
+                    await fetchData('api/attendance', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: formData
+                    });
+                    showMessage('更新成功');
+                } else {
+                    await fetchData('api/attendance', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: formData
+                    });
+                    showMessage('添加成功');
+                }
+                hideModal('attendanceModal');
+                loadAttendances();
+            } catch (e) {}
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initTheme();
+            // 尝试检查登录，如果未登录也尝试加载数据（用于调试）
+            if (typeof checkLogin === 'function') {
+                const isLoggedIn = checkLogin();
+                if (isLoggedIn) {
+                    loadEmployees().then(() => {
+                        loadAttendances();
+                    });
+                } else {
+                    // 未登录状态下也尝试加载数据（调试模式）
+                    loadEmployees().then(() => {
+                        loadAttendances();
+                    });
+                }
+            } else {
+                // checkLogin 未定义，直接加载数据
+                loadEmployees().then(() => {
+                    loadAttendances();
+                });
+            }
+        });
+    </script>
+</body>
+</html>

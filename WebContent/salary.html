@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>薪资管理 - 人事管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>人事管理系统</h1>
+            <div class="theme-toggle" onclick="toggleTheme()">
+                <span class="icon">●</span>
+                <span class="text">深色/浅色</span>
+            </div>
+        </div>
+    </header>
+    
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="index.html" onclick="navigateTo('index.html')">首页</a></li>
+                <li><a href="employee.html" onclick="navigateTo('employee.html')">员工管理</a></li>
+                <li><a href="department.html" onclick="navigateTo('department.html')">部门管理</a></li>
+                <li><a href="attendance.html" onclick="navigateTo('attendance.html')">考勤管理</a></li>
+                <li><a href="salary.html" class="active" onclick="navigateTo('salary.html')">薪资管理</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="content">
+            <h2 class="page-title">薪资管理</h2>
+            
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="openAddModal()">+ 添加薪资</button>
+            </div>
+            
+            <table id="salaryTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>员工</th>
+                        <th>薪资月份</th>
+                        <th>基本工资</th>
+                        <th>奖金</th>
+                        <th>补贴</th>
+                        <th>扣款</th>
+                        <th>总薪资</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="salaryTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div id="salaryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">添加薪资</h2>
+                <span class="close" onclick="hideModal('salaryModal')">&times;</span>
+            </div>
+            <form id="salaryForm">
+                <input type="hidden" id="salId">
+                <div class="form-group">
+                    <label>员工 *</label>
+                    <select id="empId" required>
+                        <option value="">请选择</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>薪资月份 *</label>
+                    <input type="month" id="salMonth" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>基本工资</label>
+                        <input type="number" id="baseSalary" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>奖金</label>
+                        <input type="number" id="bonus" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>补贴</label>
+                        <input type="number" id="allowance" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>扣款</label>
+                        <input type="number" id="deduction" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('salaryModal')">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script src="js/common.js"></script>
+    <script>
+        let salaries = [];
+        let employees = [];
+        
+        async function loadEmployees() {
+            try {
+                employees = await fetchData('api/employee');
+                const select = document.getElementById('empId');
+                select.innerHTML = '<option value="">请选择</option>';
+                employees.forEach(emp => {
+                    select.innerHTML += `<option value="${emp.empId}">${emp.empName}</option>`;
+                });
+            } catch (e) {}
+        }
+        
+        async function loadSalaries() {
+            try {
+                salaries = await fetchData('api/salary');
+                renderSalaries();
+            } catch (e) {}
+        }
+        
+        function renderSalaries() {
+            const tbody = document.getElementById('salaryTableBody');
+            tbody.innerHTML = '';
+            salaries.forEach(sal => {
+                const emp = employees.find(e => e.empId === sal.empId);
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${sal.salId}</td>
+                        <td>${emp ? emp.empName : '-'}</td>
+                        <td>${sal.salMonth}</td>
+                        <td>${sal.baseSalary}</td>
+                        <td>${sal.bonus}</td>
+                        <td>${sal.allowance}</td>
+                        <td>${sal.deduction}</td>
+                        <td>${sal.totalSalary}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn btn-warning btn-sm" onclick="openEditModal(${sal.salId})">编辑</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteSalary(${sal.salId})">删除</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = '添加薪资';
+            document.getElementById('salaryForm').reset();
+            document.getElementById('salId').value = '';
+            showModal('salaryModal');
+        }
+        
+        async function openEditModal(id) {
+            try {
+                const sal = await fetchData(`api/salary?id=${id}`);
+                document.getElementById('modalTitle').textContent = '编辑薪资';
+                document.getElementById('salId').value = sal.salId;
+                document.getElementById('empId').value = sal.empId;
+                document.getElementById('salMonth').value = sal.salMonth;
+                document.getElementById('baseSalary').value = sal.baseSalary;
+                document.getElementById('bonus').value = sal.bonus;
+                document.getElementById('allowance').value = sal.allowance;
+                document.getElementById('deduction').value = sal.deduction;
+                showModal('salaryModal');
+            } catch (e) {}
+        }
+        
+        async function deleteSalary(id) {
+            if (!confirm('确定要删除该薪资记录吗？')) return;
+            try {
+                await fetchData(`api/salary?id=${id}`, { method: 'DELETE' });
+                showMessage('删除成功');
+                loadSalaries();
+            } catch (e) {}
+        }
+        
+        document.getElementById('salaryForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const salId = document.getElementById('salId').value;
+            const formData = new URLSearchParams();
+            formData.append('empId', document.getElementById('empId').value);
+            formData.append('salMonth', document.getElementById('salMonth').value);
+            formData.append('baseSalary', document.getElementById('baseSalary').value || 0);
+            formData.append('bonus', document.getElementById('bonus').value || 0);
+            formData.append('allowance', document.getElementById('allowance').value || 0);
+            formData.append('deduction', document.getElementById('deduction').value || 0);
+            
+            try {
+                if (salId) {
+                    formData.append('salId', salId);
+                    await fetchData('api/salary', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: formData
+                    });
+                    showMessage('更新成功');
+                } else {
+                    await fetchData('api/salary', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: formData
+                    });
+                    showMessage('添加成功');
+                }
+                hideModal('salaryModal');
+                loadSalaries();
+            } catch (e) {}
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initTheme();
+            // 尝试检查登录，如果未登录也尝试加载数据（用于调试）
+            if (typeof checkLogin === 'function') {
+                const isLoggedIn = checkLogin();
+                if (isLoggedIn) {
+                    loadEmployees().then(() => {
+                        loadSalaries();
+                    });
+                } else {
+                    // 未登录状态下也尝试加载数据（调试模式）
+                    loadEmployees().then(() => {
+                        loadSalaries();
+                    });
+                }
+            } else {
+                // checkLogin 未定义，直接加载数据
+                loadEmployees().then(() => {
+                    loadSalaries();
+                });
+            }
+        });
+    </script>
+</body>
+</html>
