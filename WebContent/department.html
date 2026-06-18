@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>部门管理 - 人事管理系统</title>
     <link rel="stylesheet" href="css/style.css">
+    <script>
+        // 在页面渲染前立即设置主题，避免闪屏
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            // 如果用户偏好暗色且未设置主题，使用暗色
+            if (!localStorage.getItem('theme') && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
 </head>
 <body>
     <header>
