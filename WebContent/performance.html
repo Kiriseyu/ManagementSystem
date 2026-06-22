@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绩效管理 - 人事管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (!localStorage.getItem('theme') && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>人事管理系统</h1>
+            <div class="header-actions">
+                <div id="user-info" class="user-info" style="display: none;">
+                    <span id="username-display"></span>
+                    <a href="usercenter.html" class="btn btn-secondary btn-sm">个人中心</a>
+                    <button class="btn btn-secondary btn-sm" onclick="logout()">退出登录</button>
+                </div>
+                <div class="theme-toggle" onclick="toggleTheme()">
+                    <span class="icon">●</span>
+                    <span class="text">深色/浅色</span>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="index.html" onclick="navigateTo('index.html')">首页</a></li>
+                <li><a href="employee.html" onclick="navigateTo('employee.html')">员工管理</a></li>
+                <li><a href="department.html" onclick="navigateTo('department.html')">部门管理</a></li>
+                <li><a href="attendance.html" onclick="navigateTo('attendance.html')">考勤管理</a></li>
+                <li><a href="salary.html" onclick="navigateTo('salary.html')">薪资管理</a></li>
+                <li><a href="position.html" onclick="navigateTo('position.html')">职位管理</a></li>
+                <li><a href="title.html" onclick="navigateTo('title.html')">职称管理</a></li>
+                <li><a href="performance.html" class="active" onclick="navigateTo('performance.html')">绩效管理</a></li>
+                <li><a href="users.html" onclick="navigateTo('users.html')">用户管理</a></li>
+                <li><a href="log.html" onclick="navigateTo('log.html')">操作日志</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="content">
+            <h2 class="page-title">绩效管理</h2>
+            
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="openAddModal()">+ 添加绩效记录</button>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="搜索员工姓名...">
+                    <button class="btn btn-secondary" onclick="searchPerformance()">搜索</button>
+                </div>
+            </div>
+            
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>员工姓名</th>
+                        <th>考核周期</th>
+                        <th>绩效得分</th>
+                        <th>绩效等级</th>
+                        <th>考核人</th>
+                        <th>考核日期</th>
+                        <th>备注</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="performanceTableBody">
+                    <!-- 数据将通过JavaScript加载 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- 添加/编辑绩效记录模态框 -->
+    <div id="performanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">添加绩效记录</h3>
+                <span class="close" onclick="hideModal('performanceModal')">&times;</span>
+            </div>
+            <form id="performanceForm">
+                <input type="hidden" id="perfId">
+                <div class="form-group">
+                    <label>员工姓名</label>
+                    <select id="perfEmpId" required>
+                        <option value="">请选择员工</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>考核周期</label>
+                    <input type="text" id="perfPeriod" placeholder="如：2026-Q2" required>
+                </div>
+                <div class="form-group">
+                    <label>绩效得分</label>
+                    <input type="number" id="perfScore" min="0" max="100" step="0.1" required>
+                </div>
+                <div class="form-group">
+                    <label>绩效等级</label>
+                    <select id="perfGrade">
+                        <option value="A">A - 优秀</option>
+                        <option value="B">B - 良好</option>
+                        <option value="C">C - 合格</option>
+                        <option value="D">D - 待改进</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>考核人</label>
+                    <input type="text" id="perfEvaluator" required>
+                </div>
+                <div class="form-group">
+                    <label>备注</label>
+                    <textarea id="perfRemark" rows="3"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('performanceModal')">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="backToTop" class="back-to-top" onclick="scrollToTop()">↑</div>
+    
+    <script src="js/common.js"></script>
+    <script>
+        let performances = [];
+        let employees = [];
+        
+        async function loadPerformances() {
+            try {
+                performances = await fetchData('api/performance');
+                await loadEmployees();
+                renderTable();
+            } catch (e) {
+                console.error('加载绩效数据失败:', e);
+                showMessage('加载绩效数据失败', 'error');
+            }
+        }
+        
+        async function loadEmployees() {
+            try {
+                employees = await fetchData('api/employee');
+                const select = document.getElementById('perfEmpId');
+                select.innerHTML = '<option value="">请选择员工</option>';
+                employees.forEach(emp => {
+                    select.innerHTML += `<option value="${emp.empId}">${emp.empName}</option>`;
+                });
+            } catch (e) {
+                console.error('加载员工数据失败:', e);
+            }
+        }
+        
+        function renderTable() {
+            const tbody = document.getElementById('performanceTableBody');
+            tbody.innerHTML = '';
+            
+            if (!performances || performances.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">暂无数据</td></tr>';
+                return;
+            }
+            
+            performances.forEach(perf => {
+                const emp = employees.find(e => e.empId === perf.empId);
+                const empName = emp ? emp.empName : '-';
+                const gradeText = getGradeText(perf.performanceGrade);
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${perf.perfId}</td>
+                        <td>${empName}</td>
+                        <td>${perf.period}</td>
+                        <td>${perf.score}</td>
+                        <td><span class="grade-badge grade-${perf.performanceGrade.toLowerCase()}">${gradeText}</span></td>
+                        <td>${perf.evaluator || '-'}</td>
+                        <td>${perf.evaluateDate || '-'}</td>
+                        <td>${perf.remark || '-'}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn btn-primary btn-sm" onclick="showEditModal(${perf.perfId})">编辑</button>
+                                <button class="btn btn-danger btn-sm" onclick="deletePerformance(${perf.perfId})">删除</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        
+        function getGradeText(grade) {
+            const grades = {
+                'A': '优秀',
+                'B': '良好',
+                'C': '合格',
+                'D': '待改进'
+            };
+            return grades[grade] || grade;
+        }
+        
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = '添加绩效记录';
+            document.getElementById('perfId').value = '';
+            document.getElementById('performanceForm').reset();
+            showModal('performanceModal');
+        }
+        
+        function showEditModal(perfId) {
+            const perf = performances.find(p => p.perfId === perfId);
+            if (!perf) return;
+            
+            document.getElementById('modalTitle').textContent = '编辑绩效记录';
+            document.getElementById('perfId').value = perf.perfId;
+            document.getElementById('perfEmpId').value = perf.empId;
+            document.getElementById('perfPeriod').value = perf.period;
+            document.getElementById('perfScore').value = perf.score;
+            document.getElementById('perfGrade').value = perf.performanceGrade;
+            document.getElementById('perfEvaluator').value = perf.evaluator;
+            document.getElementById('perfRemark').value = perf.remark || '';
+            showModal('performanceModal');
+        }
+        
+        document.getElementById('performanceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const perfId = document.getElementById('perfId').value;
+            const empId = document.getElementById('perfEmpId').value;
+            const period = document.getElementById('perfPeriod').value;
+            const score = document.getElementById('perfScore').value;
+            const grade = document.getElementById('perfGrade').value;
+            const evaluator = document.getElementById('perfEvaluator').value;
+            const remark = document.getElementById('perfRemark').value;
+            
+            try {
+                if (perfId) {
+                    await fetchData('api/performance', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            perfId, empId, period, score, performanceGrade: grade, evaluator, remark
+                        })
+                    });
+                    showMessage('绩效记录更新成功');
+                } else {
+                    await fetchData('api/performance', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            empId, period, score, performanceGrade: grade, evaluator, remark
+                        })
+                    });
+                    showMessage('绩效记录添加成功');
+                }
+                hideModal('performanceModal');
+                loadPerformances();
+            } catch (e) {
+                console.error('保存失败:', e);
+                showMessage('保存失败', 'error');
+            }
+        });
+        
+        async function deletePerformance(perfId) {
+            if (!confirm('确定要删除该绩效记录吗？')) return;
+            
+            try {
+                await fetchData(`api/performance?id=${perfId}`, { method: 'DELETE' });
+                showMessage('绩效记录删除成功');
+                loadPerformances();
+            } catch (e) {
+                console.error('删除失败:', e);
+                showMessage('删除失败', 'error');
+            }
+        }
+        
+        function searchPerformance() {
+            const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+            if (!keyword) {
+                renderTable();
+                return;
+            }
+            
+            const filtered = performances.filter(p => {
+                const emp = employees.find(e => e.empId === p.empId);
+                return emp && emp.empName.toLowerCase().includes(keyword);
+            });
+            
+            const tbody = document.getElementById('performanceTableBody');
+            tbody.innerHTML = '';
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">未找到匹配的数据</td></tr>';
+                return;
+            }
+            
+            filtered.forEach(perf => {
+                const emp = employees.find(e => e.empId === perf.empId);
+                const empName = emp ? emp.empName : '-';
+                const gradeText = getGradeText(perf.performanceGrade);
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${perf.perfId}</td>
+                        <td>${empName}</td>
+                        <td>${perf.period}</td>
+                        <td>${perf.score}</td>
+                        <td><span class="grade-badge grade-${perf.performanceGrade.toLowerCase()}">${gradeText}</span></td>
+                        <td>${perf.evaluator || '-'}</td>
+                        <td>${perf.evaluateDate || '-'}</td>
+                        <td>${perf.remark || '-'}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn btn-primary btn-sm" onclick="showEditModal(${perf.perfId})">编辑</button>
+                                <button class="btn btn-danger btn-sm" onclick="deletePerformance(${perf.perfId})">删除</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initTheme();
+            initBackToTop();
+            if (typeof checkLogin === 'function' && checkLogin()) {
+                loadPerformances();
+            }
+        });
+    </script>
+    
+    <style>
+        .grade-badge {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .grade-a { background: #4caf50; color: white; }
+        .grade-b { background: #2196f3; color: white; }
+        .grade-c { background: #ff9800; color: white; }
+        .grade-d { background: #f44336; color: white; }
+    </style>
+</body>
+</html>

@@ -37,6 +37,11 @@
                 <li><a href="department.html" onclick="navigateTo('department.html')">部门管理</a></li>
                 <li><a href="attendance.html" onclick="navigateTo('attendance.html')">考勤管理</a></li>
                 <li><a href="salary.html" onclick="navigateTo('salary.html')">薪资管理</a></li>
+                <li><a href="position.html" onclick="navigateTo('position.html')">职位管理</a></li>
+                <li><a href="title.html" onclick="navigateTo('title.html')">职称管理</a></li>
+                <li><a href="performance.html" onclick="navigateTo('performance.html')">绩效管理</a></li>
+                <li><a href="log.html" onclick="navigateTo('log.html')">操作日志</a></li>
+                <li><a href="usercenter.html" onclick="navigateTo('usercenter.html')">个人中心</a></li>
             </ul>
         </div>
     </nav>
@@ -47,6 +52,9 @@
             
             <div class="toolbar">
                 <button class="btn btn-primary" onclick="openAddModal()">+ 添加员工</button>
+                <button class="btn btn-success" onclick="exportEmployees()">导出Excel</button>
+                <button class="btn btn-info" onclick="document.getElementById('importFile').click()">导入Excel</button>
+                <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none" onchange="importEmployees(this)">
                 <div class="search-box">
                     <input type="text" id="searchInput" placeholder="搜索员工姓名...">
                     <button class="btn btn-secondary" onclick="searchEmployees()">搜索</button>
@@ -286,6 +294,39 @@
                 loadEmployees();
             } catch (e) {}
         });
+
+        // 导出员工数据为Excel
+        function exportEmployees() {
+            window.location.href = 'api/employee?action=export';
+        }
+
+        // 导入员工数据
+        async function importEmployees(fileInput) {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('api/employee?action=import', {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    loadEmployees();
+                } else {
+                    alert(result.message || '导入失败');
+                }
+            } catch (e) {
+                alert('导入失败: ' + e);
+            }
+            // 清空文件输入，允许重复选择同一文件
+            fileInput.value = '';
+        }
         
         document.addEventListener('DOMContentLoaded', function() {
             initTheme();

@@ -25,6 +25,7 @@
             <div class="header-actions">
                 <div id="user-info" class="user-info" style="display: none;">
                     <span id="username-display"></span>
+                    <a href="usercenter.html" class="btn btn-secondary btn-sm">个人中心</a>
                     <button class="btn btn-secondary btn-sm" onclick="logout()">退出登录</button>
                 </div>
                 <div class="theme-toggle" onclick="toggleTheme()">
@@ -35,14 +36,10 @@
         </div>
     </header>
     
-    <nav>
+    <nav id="main-nav">
         <div class="container">
-            <ul>
-                <li><a href="index.html" class="active">首页</a></li>
-                <li><a href="employee.html">员工管理</a></li>
-                <li><a href="department.html">部门管理</a></li>
-                <li><a href="attendance.html">考勤管理</a></li>
-                <li><a href="salary.html">薪资管理</a></li>
+            <ul id="nav-menu">
+                <!-- 导航菜单将根据用户角色动态生成 -->
             </ul>
         </div>
     </nav>
@@ -52,24 +49,10 @@
             <div class="welcome-section">
                 <h2>欢迎使用人事管理系统</h2>
                 <p>高效管理您的人力资源，简化人事管理流程</p>
+                <div id="version-info" style="font-size: 12px; color: #6b7280; margin-top: 8px;"></div>
                 
-                <div class="dashboard-cards">
-                    <a href="employee.html" class="card">
-                        <h3>员工管理</h3>
-                        <p>管理员工基本信息，包括增删改查操作</p>
-                    </a>
-                    <a href="department.html" class="card">
-                        <h3>部门管理</h3>
-                        <p>管理公司部门信息，维护组织架构</p>
-                    </a>
-                    <a href="attendance.html" class="card">
-                        <h3>考勤管理</h3>
-                        <p>记录和管理员工考勤信息</p>
-                    </a>
-                    <a href="salary.html" class="card">
-                        <h3>薪资管理</h3>
-                        <p>管理员工薪资信息，计算工资发放</p>
-                    </a>
+                <div class="dashboard-cards" id="dashboard-cards">
+                    <!-- 功能卡片将根据用户角色动态生成 -->
                 </div>
             </div>
         </div>
@@ -77,26 +60,104 @@
     
     <script src="js/common.js"></script>
     <script>
+        // 管理员导航菜单
+        const adminNavMenu = [
+            { href: 'index.html', text: '首页', active: true },
+            { href: 'employee.html', text: '员工管理' },
+            { href: 'department.html', text: '部门管理' },
+            { href: 'attendance.html', text: '考勤管理' },
+            { href: 'salary.html', text: '薪资管理' },
+            { href: 'position.html', text: '职位管理' },
+            { href: 'title.html', text: '职称管理' },
+            { href: 'performance.html', text: '绩效管理' },
+            { href: 'users.html', text: '用户管理' },
+            { href: 'log.html', text: '操作日志' }
+        ];
+        
+        // 普通用户导航菜单
+        const userNavMenu = [
+            { href: 'index.html', text: '首页', active: true },
+            { href: 'attendance.html', text: '考勤管理' },
+            { href: 'log.html', text: '操作日志' }
+        ];
+        
+        // 管理员功能卡片（两行布局）
+        const adminCards = [
+            // 第一行
+            { href: 'employee.html', title: '员工管理', desc: '管理员工基本信息，支持Excel导入导出' },
+            { href: 'department.html', title: '部门管理', desc: '管理公司部门信息，支持树形层级结构' },
+            { href: 'attendance.html', title: '考勤管理', desc: '记录和管理员工考勤信息' },
+            { href: 'salary.html', title: '薪资管理', desc: '管理员工薪资信息，计算工资发放' },
+            // 第二行
+            { href: 'position.html', title: '职位管理', desc: '管理公司职位信息，维护职位层级' },
+            { href: 'title.html', title: '职称管理', desc: '管理员工职称信息，支持职称评定' },
+            { href: 'performance.html', title: '绩效管理', desc: '评估员工绩效，支持绩效打分和排名' },
+            { href: 'users.html', title: '用户管理', desc: '管理系统用户账号，支持添加管理员' }
+        ];
+        
+        // 普通用户功能卡片
+        const userCards = [
+            { href: 'attendance.html', title: '考勤管理', desc: '查看和管理个人考勤记录' },
+            { href: 'log.html', title: '操作日志', desc: '查看个人操作历史记录' }
+        ];
+        
         function checkLogin() {
             const username = sessionStorage.getItem('username');
+            const role = sessionStorage.getItem('role');
+            
             if (!username) {
                 window.location.href = 'login.html';
                 return;
             }
-            document.getElementById('username-display').textContent = `欢迎, ${username}`;
+            
+            // 显示用户信息和角色
+            const roleText = role === 'admin' ? '管理员' : '普通用户';
+            document.getElementById('username-display').textContent = `欢迎, ${username} (${roleText})`;
             document.getElementById('user-info').style.display = 'flex';
+            
+            // 根据角色生成导航菜单
+            const navMenu = role === 'admin' ? adminNavMenu : userNavMenu;
+            const navMenuHtml = navMenu.map(item => 
+                `<li><a href="${item.href}" ${item.active ? 'class="active"' : ''}>${item.text}</a></li>`
+            ).join('');
+            document.getElementById('nav-menu').innerHTML = navMenuHtml;
+            
+            // 根据角色生成功能卡片
+            const cards = role === 'admin' ? adminCards : userCards;
+            const cardsHtml = cards.map(card => 
+                `<a href="${card.href}" class="card">
+                    <h3>${card.title}</h3>
+                    <p>${card.desc}</p>
+                </a>`
+            ).join('');
+            document.getElementById('dashboard-cards').innerHTML = cardsHtml;
         }
         
         function logout() {
-            sessionStorage.removeItem('userId');
-            sessionStorage.removeItem('username');
-            sessionStorage.removeItem('role');
-            window.location.href = 'login.html';
+            fetch('api/logout', { method: 'POST', credentials: 'include' })
+                .then(() => {
+                    sessionStorage.removeItem('userId');
+                    sessionStorage.removeItem('username');
+                    sessionStorage.removeItem('role');
+                    window.location.href = 'login.html';
+                });
         }
         
         document.addEventListener('DOMContentLoaded', function() {
             checkLogin();
+            loadVersionInfo();
         });
+        
+        async function loadVersionInfo() {
+            try {
+                const response = await fetch('api/version');
+                const data = await response.json();
+                document.getElementById('version-info').textContent = 
+                    `版本: ${data.version} | 构建时间: ${data.buildTime} | 服务器时间: ${data.serverTime}`;
+            } catch (error) {
+                document.getElementById('version-info').textContent = '';
+            }
+        }
     </script>
 </body>
 </html>

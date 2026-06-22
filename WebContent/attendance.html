@@ -22,21 +22,24 @@
     <header>
         <div class="container">
             <h1>人事管理系统</h1>
-            <div class="theme-toggle" onclick="toggleTheme()">
-                <span class="icon">●</span>
-                <span class="text">深色/浅色</span>
+            <div class="header-actions">
+                <div id="user-info" class="user-info" style="display: none;">
+                    <span id="username-display"></span>
+                    <a href="usercenter.html" class="btn btn-secondary btn-sm">个人中心</a>
+                    <button class="btn btn-secondary btn-sm" onclick="logout()">退出登录</button>
+                </div>
+                <div class="theme-toggle" onclick="toggleTheme()">
+                    <span class="icon">●</span>
+                    <span class="text">深色/浅色</span>
+                </div>
             </div>
         </div>
     </header>
     
     <nav>
         <div class="container">
-            <ul>
-                <li><a href="index.html" onclick="navigateTo('index.html')">首页</a></li>
-                <li><a href="employee.html" onclick="navigateTo('employee.html')">员工管理</a></li>
-                <li><a href="department.html" onclick="navigateTo('department.html')">部门管理</a></li>
-                <li><a href="attendance.html" class="active" onclick="navigateTo('attendance.html')">考勤管理</a></li>
-                <li><a href="salary.html" onclick="navigateTo('salary.html')">薪资管理</a></li>
+            <ul id="nav-menu">
+                <!-- 导航菜单将根据用户角色动态生成 -->
             </ul>
         </div>
     </nav>
@@ -229,23 +232,73 @@
             } catch (e) {}
         });
         
+        // 管理员导航菜单
+        const adminNavMenu = [
+            { href: 'index.html', text: '首页' },
+            { href: 'employee.html', text: '员工管理' },
+            { href: 'department.html', text: '部门管理' },
+            { href: 'attendance.html', text: '考勤管理', active: true },
+            { href: 'salary.html', text: '薪资管理' },
+            { href: 'position.html', text: '职位管理' },
+            { href: 'title.html', text: '职称管理' },
+            { href: 'performance.html', text: '绩效管理' },
+            { href: 'users.html', text: '用户管理' },
+            { href: 'log.html', text: '操作日志' }
+        ];
+        
+        // 普通用户导航菜单
+        const userNavMenu = [
+            { href: 'index.html', text: '首页' },
+            { href: 'attendance.html', text: '考勤管理', active: true },
+            { href: 'log.html', text: '操作日志' }
+        ];
+        
+        function checkLogin() {
+            const username = sessionStorage.getItem('username');
+            const role = sessionStorage.getItem('role');
+            
+            if (!username) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            
+            // 显示用户信息
+            const roleText = role === 'admin' ? '管理员' : '普通用户';
+            document.getElementById('username-display').textContent = `欢迎, ${username} (${roleText})`;
+            document.getElementById('user-info').style.display = 'flex';
+            
+            // 根据角色生成导航菜单
+            const navMenu = role === 'admin' ? adminNavMenu : userNavMenu;
+            const navMenuHtml = navMenu.map(item => 
+                `<li><a href="${item.href}" ${item.active ? 'class="active"' : ''}>${item.text}</a></li>`
+            ).join('');
+            document.getElementById('nav-menu').innerHTML = navMenuHtml;
+            
+            return true;
+        }
+        
+        function logout() {
+            fetch('api/logout', { method: 'POST', credentials: 'include' })
+                .then(() => {
+                    sessionStorage.removeItem('userId');
+                    sessionStorage.removeItem('username');
+                    sessionStorage.removeItem('role');
+                    window.location.href = 'login.html';
+                });
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             initTheme();
-            // 尝试检查登录，如果未登录也尝试加载数据（用于调试）
+            initBackToTop();
+            
             if (typeof checkLogin === 'function') {
                 const isLoggedIn = checkLogin();
                 if (isLoggedIn) {
                     loadEmployees().then(() => {
                         loadAttendances();
                     });
-                } else {
-                    // 未登录状态下也尝试加载数据（调试模式）
-                    loadEmployees().then(() => {
-                        loadAttendances();
-                    });
                 }
             } else {
-                // checkLogin 未定义，直接加载数据
                 loadEmployees().then(() => {
                     loadAttendances();
                 });

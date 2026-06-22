@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>职位管理 - 人事管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (!localStorage.getItem('theme') && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>人事管理系统</h1>
+            <div class="header-actions">
+                <div id="user-info" class="user-info" style="display: none;">
+                    <span id="username-display"></span>
+                    <button class="btn btn-secondary btn-sm" onclick="logout()">退出登录</button>
+                </div>
+                <div class="theme-toggle" onclick="toggleTheme()">
+                    <span class="icon">●</span>
+                    <span class="text">深色/浅色</span>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <nav>
+        <div class="container">
+            <ul id="nav-menu">
+                <!-- 导航菜单将根据用户角色动态生成 -->
+            </ul>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="content">
+            <h2 class="page-title">职位管理</h2>
+            
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="showAddModal()">添加职位</button>
+            </div>
+            
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>职位名称</th>
+                        <th>职位级别</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="positionTableBody">
+                    <!-- 数据将通过JavaScript加载 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- 添加/编辑模态框 -->
+    <div id="positionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">添加职位</h3>
+                <span class="close" onclick="hideModal('positionModal')">&times;</span>
+            </div>
+            <form id="positionForm">
+                <input type="hidden" id="posId">
+                <div class="form-group">
+                    <label>职位名称</label>
+                    <input type="text" id="posName" required>
+                </div>
+                <div class="form-group">
+                    <label>职位级别</label>
+                    <select id="posLevel" required>
+                        <option value="1">1级（初级）</option>
+                        <option value="2">2级（中级）</option>
+                        <option value="3">3级（高级）</option>
+                        <option value="4">4级（资深）</option>
+                        <option value="5">5级（专家）</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <select id="posStatus">
+                        <option value="1">启用</option>
+                        <option value="0">禁用</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal('positionModal')">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="backToTop" class="back-to-top" onclick="scrollToTop()">↑</div>
+    
+    <script src="js/common.js"></script>
+    <script>
+        let positions = [];
+        
+        async function loadPositions() {
+            try {
+                positions = await fetchData('api/position');
+                renderPositions();
+            } catch (e) {
+                console.error('加载职位失败:', e);
+                showMessage('加载职位失败', 'error');
+            }
+        }
+        
+        function renderPositions() {
+            const tbody = document.getElementById('positionTableBody');
+            tbody.innerHTML = '';
+            
+            if (!positions || positions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">暂无数据</td></tr>';
+                return;
+            }
+            
+            positions.forEach(pos => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${pos.posId}</td>
+                        <td>${pos.posName}</td>
+                        <td>${pos.posLevel}级</td>
+                        <td>${pos.status === 1 ? '<span class="status active">启用</span>' : '<span class="status inactive">禁用</span>'}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn btn-warning btn-sm" onclick="showEditModal(${pos.posId})">编辑</button>
+                                <button class="btn btn-danger btn-sm" onclick="deletePosition(${pos.posId})">删除</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        
+        function showAddModal() {
+            document.getElementById('modalTitle').textContent = '添加职位';
+            document.getElementById('posId').value = '';
+            document.getElementById('positionForm').reset();
+            document.getElementById('posLevel').value = '1';
+            document.getElementById('posStatus').value = '1';
+            showModal('positionModal');
+        }
+        
+        function showEditModal(posId) {
+            const pos = positions.find(p => p.posId === posId);
+            if (!pos) return;
+            
+            document.getElementById('modalTitle').textContent = '编辑职位';
+            document.getElementById('posId').value = pos.posId;
+            document.getElementById('posName').value = pos.posName;
+            document.getElementById('posLevel').value = pos.posLevel;
+            document.getElementById('posStatus').value = pos.status;
+            showModal('positionModal');
+        }
+        
+        document.getElementById('positionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const posId = document.getElementById('posId').value;
+            const posName = document.getElementById('posName').value;
+            const posLevel = document.getElementById('posLevel').value;
+            const posStatus = document.getElementById('posStatus').value;
+            
+            try {
+                if (posId) {
+                    await fetchData('api/position', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ posId, posName, posLevel, status: posStatus })
+                    });
+                    showMessage('职位更新成功');
+                } else {
+                    await fetchData('api/position', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ posName, posLevel })
+                    });
+                    showMessage('职位添加成功');
+                }
+                hideModal('positionModal');
+                loadPositions();
+            } catch (e) {
+                console.error('保存失败:', e);
+                showMessage(e.message || '保存失败', 'error');
+            }
+        });
+        
+        async function deletePosition(posId) {
+            if (!confirm('确定要删除该职位吗？')) return;
+            
+            try {
+                await fetchData(`api/position?id=${posId}`, { method: 'DELETE' });
+                showMessage('职位删除成功');
+                loadPositions();
+            } catch (e) {
+                console.error('删除失败:', e);
+                showMessage('删除失败', 'error');
+            }
+        }
+        
+        // 管理员导航菜单
+        const adminNavMenu = [
+            { href: 'index.html', text: '首页' },
+            { href: 'employee.html', text: '员工管理' },
+            { href: 'department.html', text: '部门管理' },
+            { href: 'attendance.html', text: '考勤管理' },
+            { href: 'salary.html', text: '薪资管理' },
+            { href: 'position.html', text: '职位管理', active: true },
+            { href: 'title.html', text: '职称管理' },
+            { href: 'performance.html', text: '绩效管理' },
+            { href: 'users.html', text: '用户管理' },
+            { href: 'log.html', text: '操作日志' }
+        ];
+        
+        // 普通用户导航菜单
+        const userNavMenu = [
+            { href: 'index.html', text: '首页' },
+            { href: 'attendance.html', text: '考勤管理' },
+            { href: 'log.html', text: '操作日志' }
+        ];
+        
+        function checkLogin() {
+            const username = sessionStorage.getItem('username');
+            const role = sessionStorage.getItem('role');
+            
+            if (!username) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            
+            const roleText = role === 'admin' ? '管理员' : '普通用户';
+            document.getElementById('username-display').textContent = `欢迎, ${username} (${roleText})`;
+            document.getElementById('user-info').style.display = 'flex';
+            
+            const navMenu = role === 'admin' ? adminNavMenu : userNavMenu;
+            const navMenuHtml = navMenu.map(item => 
+                `<li><a href="${item.href}" ${item.active ? 'class="active"' : ''}>${item.text}</a></li>`
+            ).join('');
+            document.getElementById('nav-menu').innerHTML = navMenuHtml;
+            
+            return true;
+        }
+        
+        function logout() {
+            fetch('api/logout', { method: 'POST', credentials: 'include' })
+                .then(() => {
+                    sessionStorage.removeItem('userId');
+                    sessionStorage.removeItem('username');
+                    sessionStorage.removeItem('role');
+                    window.location.href = 'login.html';
+                });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initTheme();
+            initBackToTop();
+            if (typeof checkLogin === 'function' && checkLogin()) {
+                loadPositions();
+            }
+        });
+    </script>
+    
+    <style>
+        .status {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .status.active { background: #4caf50; color: white; }
+        .status.inactive { background: #999; color: white; }
+    </style>
+</body>
+</html>

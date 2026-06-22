@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>操作日志 - 人事管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (!localStorage.getItem('theme') && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>人事管理系统</h1>
+            <div class="header-actions">
+                <div id="user-info" class="user-info" style="display: none;">
+                    <span id="username-display"></span>
+                    <button class="btn btn-secondary btn-sm" onclick="logout()">退出登录</button>
+                </div>
+                <div class="theme-toggle" onclick="toggleTheme()">
+                    <span class="icon">●</span>
+                    <span class="text">深色/浅色</span>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <nav>
+        <div class="container">
+            <ul id="nav-menu">
+                <!-- 导航菜单将根据用户角色动态生成 -->
+            </ul>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="content">
+            <h2 class="page-title">操作日志</h2>
+            
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>操作描述</th>
+                        <th>模块</th>
+                        <th>详情</th>
+                        <th>IP地址</th>
+                        <th>操作时间</th>
+                    </tr>
+                </thead>
+                <tbody id="logTableBody">
+                    <!-- 数据将通过JavaScript加载 -->
+                </tbody>
+            </table>
+            
+            <div class="pagination" id="pagination">
+                <!-- 分页将通过JavaScript生成 -->
+            </div>
+        </div>
+    </div>
+    
+    <div id="backToTop" class="back-to-top" onclick="scrollToTop()">↑</div>
+    
+    <script src="js/common.js"></script>
+    <script>
+        let currentPage = 1;
+        let pageSize = 15;
+        let totalCount = 0;
+        
+        async function loadLogs(page = 1) {
+            currentPage = page;
+            try {
+                const response = await fetch(`api/log?page=${page}&size=${pageSize}`);
+                const result = await response.json();
+                
+                totalCount = result.total;
+                renderLogs(result.data);
+                renderPagination();
+            } catch (e) {
+                console.error('加载日志失败:', e);
+                showMessage('加载日志失败', 'error');
+            }
+        }
+        
+        function renderLogs(logs) {
+            const tbody = document.getElementById('logTableBody');
+            tbody.innerHTML = '';
+            
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">暂无数据</td></tr>';
+                return;
+            }
+            
+            logs.forEach(log => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${log.logId}</td>
+                        <td>${log.username || '-'}</td>
+                        <td>${log.operation || '-'}</td>
+                        <td>${log.module || '-'}</td>
+                        <td>${log.detail || '-'}</td>
+                        <td>${log.ipAddress || '-'}</td>
+                        <td>${log.operationTime || '-'}</td>
+                    </tr>
+                `;
+            });
+        }
+        
+        function renderPagination() {
+            const totalPages = Math.ceil(totalCount / pageSize);
+            const pagination = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            
+            // 上一页
+            html += `<button class="btn btn-sm" ${currentPage === 1 ? 'disabled' : ''} onclick="loadLogs(${currentPage - 1})">上一页</button>`;
+            
+            // 页码
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    html += `<button class="btn btn-sm ${i === currentPage ? 'btn-primary' : ''}" onclick="loadLogs(${i})">${i}</button>`;
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    html += `<span class="pagination-ellipsis">...</span>`;
+                }
+            }
+            
+            // 下一页
+            html += `<button class="btn btn-sm" ${currentPage === totalPages ? 'disabled' : ''} onclick="loadLogs(${currentPage + 1})">下一页</button>`;
+            
+            pagination.innerHTML = html;
+        }
+        
+        // 管理员导航菜单
+        const adminNavMenu = [
+            { href: 'index.html', text: '首页' },
+            { href: 'employee.html', text: '员工管理' },
+            { href: 'department.html', text: '部门管理' },
+            { href: 'attendance.html', text: '考勤管理' },
+            { href: 'salary.html', text: '薪资管理' },
+            { href: 'position.html', text: '职位管理' },
+            { href: 'title.html', text: '职称管理' },
+            { href: 'performance.html', text: '绩效管理' },
+            { href: 'users.html', text: '用户管理' },
+            { href: 'log.html', text: '操作日志', active: true }
+        ];
+        
+        // 普通用户导航菜单
+        const userNavMenu = [
+            { href: 'index.html', text: '首页' },
+            { href: 'attendance.html', text: '考勤管理' },
+            { href: 'log.html', text: '操作日志', active: true }
+        ];
+        
+        function checkLogin() {
+            const username = sessionStorage.getItem('username');
+            const role = sessionStorage.getItem('role');
+            
+            if (!username) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            
+            const roleText = role === 'admin' ? '管理员' : '普通用户';
+            document.getElementById('username-display').textContent = `欢迎, ${username} (${roleText})`;
+            document.getElementById('user-info').style.display = 'flex';
+            
+            const navMenu = role === 'admin' ? adminNavMenu : userNavMenu;
+            const navMenuHtml = navMenu.map(item => 
+                `<li><a href="${item.href}" ${item.active ? 'class="active"' : ''}>${item.text}</a></li>`
+            ).join('');
+            document.getElementById('nav-menu').innerHTML = navMenuHtml;
+            
+            return true;
+        }
+        
+        function logout() {
+            fetch('api/logout', { method: 'POST', credentials: 'include' })
+                .then(() => {
+                    sessionStorage.removeItem('userId');
+                    sessionStorage.removeItem('username');
+                    sessionStorage.removeItem('role');
+                    window.location.href = 'login.html';
+                });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            initTheme();
+            initBackToTop();
+            if (typeof checkLogin === 'function' && checkLogin()) {
+                loadLogs();
+            }
+        });
+    </script>
+    
+    <style>
+        .status {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .status.active { background: #4caf50; color: white; }
+        .status.inactive { background: #f44336; color: white; }
+        
+        .method-badge {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .method-badge.get { background: #4caf50; color: white; }
+        .method-badge.post { background: #2196f3; color: white; }
+        .method-badge.put { background: #ff9800; color: white; }
+        .method-badge.delete { background: #f44336; color: white; }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            margin-top: 20px;
+        }
+        
+        .pagination-ellipsis {
+            padding: 0 5px;
+        }
+    </style>
+</body>
+</html>

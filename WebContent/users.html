@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - 人事管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+    <style>
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .user-table th, .user-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .user-table th {
+            background-color: var(--bg-secondary);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .user-table tr:hover {
+            background-color: var(--bg-tertiary);
+        }
+        .role-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .role-badge.admin {
+            background-color: #fef3c7;
+            color: #d97706;
+        }
+        .role-badge.user {
+            background-color: #dbeafe;
+            color: #2563eb;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-badge.active {
+            background-color: #dcfce7;
+            color: #16a34a;
+        }
+        .status-badge.inactive {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 10px;
+            width: 450px;
+            max-width: 90%;
+        }
+        .modal h3 {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        .modal .close {
+            float: right;
+            cursor: pointer;
+            font-size: 24px;
+            color: var(--text-secondary);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            box-sizing: border-box;
+        }
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+        }
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+        .success-message, .error-message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>人事管理系统</h1>
+            <div class="header-actions">
+                <div id="user-info" class="user-info" style="display: none;">
+                    <span id="username-display"></span>
+                    <a href="usercenter.html" class="btn btn-secondary btn-sm">个人中心</a>
+                    <button class="btn btn-secondary btn-sm" onclick="logout()">退出登录</button>
+                </div>
+                <div class="theme-toggle" onclick="toggleTheme()">
+                    <span class="icon">●</span>
+                    <span class="text">深色/浅色</span>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <nav id="main-nav">
+        <div class="container">
+            <ul id="nav-menu">
+                <!-- 导航菜单将根据用户角色动态生成 -->
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="content">
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="openAddModal()">+ 添加用户</button>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="搜索用户名...">
+                    <button class="btn btn-secondary" onclick="searchUsers()">搜索</button>
+                </div>
+            </div>
+            
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>邮箱</th>
+                        <th>角色</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    <!-- 用户数据将动态加载 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 添加用户弹窗 -->
+    <div class="modal-overlay" id="addModal">
+        <div class="modal">
+            <span class="close" onclick="closeAddModal()">&times;</span>
+            <h3>添加用户</h3>
+            <div id="addMessage"></div>
+            <form id="addForm" onsubmit="handleAddUser(event)">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="addUsername" required placeholder="请输入用户名">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="addPassword" required placeholder="请输入密码">
+                </div>
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="email" id="addEmail" placeholder="请输入邮箱">
+                </div>
+                <div class="form-group">
+                    <label>角色</label>
+                    <select id="addRole">
+                        <option value="user">普通用户</option>
+                        <option value="admin">管理员</option>
+                    </select>
+                </div>
+                <div class="btn-group" style="justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 编辑用户弹窗 -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <span class="close" onclick="closeEditModal()">&times;</span>
+            <h3>编辑用户</h3>
+            <div id="editMessage"></div>
+            <form id="editForm" onsubmit="handleEditUser(event)">
+                <input type="hidden" id="editUserId">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="editUsername" required>
+                </div>
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="email" id="editEmail">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>角色</label>
+                        <select id="editRole">
+                            <option value="user">普通用户</option>
+                            <option value="admin">管理员</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>状态</label>
+                        <select id="editStatus">
+                            <option value="1">启用</option>
+                            <option value="0">禁用</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="btn-group" style="justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script>
+        const adminNavMenu = [
+            { href: 'index.html', text: '首页' },
+            { href: 'employee.html', text: '员工管理' },
+            { href: 'department.html', text: '部门管理' },
+            { href: 'attendance.html', text: '考勤管理' },
+            { href: 'salary.html', text: '薪资管理' },
+            { href: 'position.html', text: '职位管理' },
+            { href: 'title.html', text: '职称管理' },
+            { href: 'performance.html', text: '绩效管理' },
+            { href: 'users.html', text: '用户管理', active: true },
+            { href: 'log.html', text: '操作日志' }
+        ];
+
+        function checkLogin() {
+            const username = sessionStorage.getItem('username');
+            const role = sessionStorage.getItem('role');
+            
+            if (!username) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            if (role !== 'admin') {
+                alert('您没有访问权限');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            document.getElementById('username-display').textContent = `欢迎, ${username} (管理员)`;
+            document.getElementById('user-info').style.display = 'flex';
+
+            const navMenuHtml = adminNavMenu.map(item => 
+                `<li><a href="${item.href}" ${item.active ? 'class="active"' : ''}>${item.text}</a></li>`
+            ).join('');
+            document.getElementById('nav-menu').innerHTML = navMenuHtml;
+        }
+
+        function logout() {
+            fetch('api/logout', { method: 'POST', credentials: 'include' })
+                .then(() => {
+                    sessionStorage.clear();
+                    window.location.href = 'login.html';
+                });
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch('api/users');
+                const users = await response.json();
+                renderUsers(users);
+            } catch (error) {
+                console.error('加载用户数据失败:', error);
+            }
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('userTableBody');
+            tbody.innerHTML = '';
+
+            users.forEach(user => {
+                const roleClass = user.role === 'admin' ? 'admin' : 'user';
+                const roleText = user.role === 'admin' ? '管理员' : '普通用户';
+                const statusClass = user.status === 1 ? 'active' : 'inactive';
+                const statusText = user.status === 1 ? '正常' : '禁用';
+
+                const row = `
+                    <tr>
+                        <td>${user.userId}</td>
+                        <td>${user.username}</td>
+                        <td>${user.email || '-'}</td>
+                        <td><span class="role-badge ${roleClass}">${roleText}</span></td>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td>${formatTime(user.createTime)}</td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn btn-secondary btn-sm" onclick="openEditModal(${user.userId})">编辑</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteUser(${user.userId})">删除</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function formatTime(timeStr) {
+            if (!timeStr) return '-';
+            return new Date(timeStr).toLocaleString('zh-CN');
+        }
+
+        function searchUsers() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            loadUsers();
+        }
+
+        function openAddModal() {
+            document.getElementById('addForm').reset();
+            document.getElementById('addMessage').innerHTML = '';
+            document.getElementById('addModal').style.display = 'flex';
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').style.display = 'none';
+        }
+
+        async function handleAddUser(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('addUsername').value;
+            const password = document.getElementById('addPassword').value;
+            const email = document.getElementById('addEmail').value;
+            const role = document.getElementById('addRole').value;
+
+            try {
+                const response = await fetch('api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ username, password, email, role })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('addMessage', data.message, 'success');
+                    setTimeout(() => {
+                        closeAddModal();
+                        loadUsers();
+                    }, 1500);
+                } else {
+                    showMessage('addMessage', data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('addMessage', '添加失败', 'error');
+            }
+        }
+
+        async function openEditModal(userId) {
+            try {
+                const response = await fetch(`api/users?id=${userId}`);
+                const user = await response.json();
+
+                document.getElementById('editUserId').value = user.userId;
+                document.getElementById('editUsername').value = user.username;
+                document.getElementById('editEmail').value = user.email || '';
+                document.getElementById('editRole').value = user.role;
+                document.getElementById('editStatus').value = user.status;
+                document.getElementById('editMessage').innerHTML = '';
+                document.getElementById('editModal').style.display = 'flex';
+            } catch (error) {
+                console.error('加载用户信息失败:', error);
+            }
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        async function handleEditUser(event) {
+            event.preventDefault();
+            
+            const userId = document.getElementById('editUserId').value;
+            const username = document.getElementById('editUsername').value;
+            const email = document.getElementById('editEmail').value;
+            const role = document.getElementById('editRole').value;
+            const status = document.getElementById('editStatus').value;
+
+            try {
+                const response = await fetch('api/users', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ id: userId, username, email, role, status })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('editMessage', data.message, 'success');
+                    setTimeout(() => {
+                        closeEditModal();
+                        loadUsers();
+                    }, 1500);
+                } else {
+                    showMessage('editMessage', data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('editMessage', '更新失败', 'error');
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('确定要删除该用户吗？')) return;
+
+            try {
+                const response = await fetch(`api/users?id=${userId}`, { method: 'DELETE' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    loadUsers();
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                alert('删除失败');
+            }
+        }
+
+        function showMessage(containerId, message, type) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `<div class="${type}-message">${message}</div>`;
+            container.querySelector('div').style.display = 'block';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            checkLogin();
+            loadUsers();
+        });
+    </script>
+</body>
+</html>

@@ -63,6 +63,10 @@ public class LoginServlet extends HttpServlet {
                         result.put("userId", rs.getInt("user_id"));
                         result.put("username", rs.getString("username"));
                         result.put("role", userRole);
+                        // 将用户ID和用户名存储到session
+                        request.getSession().setAttribute("userId", rs.getInt("user_id"));
+                        request.getSession().setAttribute("username", rs.getString("username"));
+                        request.getSession().setAttribute("role", userRole);
                     }
                 }
             } else {

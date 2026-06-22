@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 - 人事管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        // 在页面渲染前立即设置主题，避免闪屏
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (!localStorage.getItem('theme') && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
+    <style>
+        .profile-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 30px;
+            background: var(--card-bg);
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .profile-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .profile-header h2 {
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+        .profile-header .role-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        .profile-section {
+            margin-bottom: 30px;
+        }
+        .profile-section h3 {
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            padding-left: 10px;
+            border-left: 4px solid var(--primary-color);
+        }
+        .info-item {
+            display: flex;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            width: 120px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .info-value {
+            flex: 1;
+            color: var(--text-primary);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .success-message, .error-message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 10px;
+            width: 400px;
+            max-width: 90%;
+        }
+        .modal h3 {
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+        .modal .close {
+            float: right;
+            cursor: pointer;
+            font-size: 24px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>人事管理系统</h1>
+            <div class="header-actions">
+                <div id="user-info" class="user-info" style="display: none;">
+                    <span id="username-display"></span>
+                    <a href="usercenter.html" class="btn btn-secondary btn-sm active">个人中心</a>
+                    <button class="btn btn-secondary btn-sm" onclick="logout()">退出登录</button>
+                </div>
+                <div class="theme-toggle" onclick="toggleTheme()">
+                    <span class="icon">●</span>
+                    <span class="text">深色/浅色</span>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <nav id="main-nav">
+        <div class="container">
+            <ul id="nav-menu">
+                <!-- 导航菜单将根据用户角色动态生成 -->
+            </ul>
+        </div>
+    </nav>
+
+    <div class="profile-container">
+        <div class="profile-header">
+            <h2 id="welcomeTitle">欢迎回来</h2>
+            <span id="roleBadge" class="role-badge">加载中...</span>
+        </div>
+
+        <div id="messageBox"></div>
+
+        <!-- 用户信息展示 -->
+        <div class="profile-section">
+            <h3>基本信息</h3>
+            <div class="info-item">
+                <span class="info-label">用户名</span>
+                <span class="info-value" id="username">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">邮箱</span>
+                <span class="info-value" id="email">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">账号状态</span>
+                <span class="info-value" id="status">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">创建时间</span>
+                <span class="info-value" id="createTime">-</span>
+            </div>
+        </div>
+
+        <!-- 修改信息 -->
+        <div class="profile-section">
+            <h3>修改个人信息</h3>
+            <form id="updateForm">
+                <div class="form-group">
+                    <label for="newEmail">新邮箱</label>
+                    <input type="email" id="newEmail" name="email" placeholder="请输入新邮箱">
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">保存修改</button>
+                    <button type="button" class="btn btn-secondary" onclick="showPasswordModal()">修改密码</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 修改密码弹窗 -->
+    <div class="modal-overlay" id="passwordModal">
+        <div class="modal">
+            <span class="close" onclick="hidePasswordModal()">&times;</span>
+            <h3>修改密码</h3>
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label for="oldPassword">原密码</label>
+                    <input type="password" id="oldPassword" name="oldPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">新密码</label>
+                    <input type="password" id="newPassword" name="newPassword" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">确认新密码</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required minlength="6">
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">确认修改</button>
+                    <button type="button" class="btn btn-secondary" onclick="hidePasswordModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script>
+        // 管理员导航菜单
+        const adminNavMenu = [
+            { href: 'index.html', text: '首页' },
+            { href: 'employee.html', text: '员工管理' },
+            { href: 'department.html', text: '部门管理' },
+            { href: 'attendance.html', text: '考勤管理' },
+            { href: 'salary.html', text: '薪资管理' },
+            { href: 'position.html', text: '职位管理' },
+            { href: 'title.html', text: '职称管理' },
+            { href: 'performance.html', text: '绩效管理' },
+            { href: 'log.html', text: '操作日志' }
+        ];
+        
+        // 普通用户导航菜单
+        const userNavMenu = [
+            { href: 'index.html', text: '首页' },
+            { href: 'attendance.html', text: '考勤管理' },
+            { href: 'log.html', text: '操作日志' }
+        ];
+        
+        function checkLogin() {
+            const username = sessionStorage.getItem('username');
+            const role = sessionStorage.getItem('role');
+            
+            if (!username) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // 显示用户信息和角色
+            const roleText = role === 'admin' ? '管理员' : '普通用户';
+            document.getElementById('username-display').textContent = `欢迎, ${username} (${roleText})`;
+            document.getElementById('user-info').style.display = 'flex';
+            
+            // 根据角色生成导航菜单
+            const navMenu = role === 'admin' ? adminNavMenu : userNavMenu;
+            const navMenuHtml = navMenu.map(item => 
+                `<li><a href="${item.href}">${item.text}</a></li>`
+            ).join('');
+            document.getElementById('nav-menu').innerHTML = navMenuHtml;
+        }
+        
+        function logout() {
+            fetch('api/logout', { method: 'POST', credentials: 'include' })
+                .then(() => {
+                    sessionStorage.removeItem('userId');
+                    sessionStorage.removeItem('username');
+                    sessionStorage.removeItem('role');
+                    window.location.href = 'login.html';
+                });
+        }
+
+        // 加载用户信息
+        function loadProfile() {
+            fetch('api/profile', {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => {
+                if (response.status === 401) {
+                    alert('请先登录');
+                    window.location.href = 'login.html';
+                    return null;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data) return;
+
+                document.getElementById('welcomeTitle').textContent = '欢迎回来，' + data.username;
+                document.getElementById('username').textContent = data.username;
+                document.getElementById('email').textContent = data.email || '未设置';
+                document.getElementById('newEmail').value = data.email || '';
+                document.getElementById('createTime').textContent = formatDateTime(data.createTime);
+
+                const roleMap = { 'admin': '管理员', 'user': '普通用户' };
+                document.getElementById('roleBadge').textContent = roleMap[data.role] || data.role;
+
+                const statusMap = { 0: '已禁用', 1: '正常使用' };
+                document.getElementById('status').textContent = statusMap[data.status] || data.status;
+            })
+            .catch(error => {
+                console.error('加载用户信息失败:', error);
+                showMessage('加载用户信息失败', 'error');
+            });
+        }
+
+        // 格式化日期时间
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN');
+        }
+
+        // 显示消息
+        function showMessage(message, type) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.innerHTML = `<div class="${type}-message">${message}</div>`;
+            messageBox.querySelector(`div`).style.display = 'block';
+            setTimeout(() => {
+                messageBox.querySelector(`div`).style.display = 'none';
+            }, 3000);
+        }
+
+        // 更新个人信息表单提交
+        document.getElementById('updateForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('newEmail').value;
+
+            fetch('api/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `email=${encodeURIComponent(email)}`,
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    loadProfile();
+                } else {
+                    showMessage(data.error || '更新失败', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('更新失败:', error);
+                showMessage('更新失败', 'error');
+            });
+        });
+
+        // 显示密码修改弹窗
+        function showPasswordModal() {
+            document.getElementById('passwordModal').style.display = 'flex';
+        }
+
+        // 隐藏密码修改弹窗
+        function hidePasswordModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+            document.getElementById('passwordForm').reset();
+        }
+
+        // 密码修改表单提交
+        document.getElementById('passwordForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const oldPassword = document.getElementById('oldPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                showMessage('两次输入的新密码不一致', 'error');
+                return;
+            }
+
+            fetch('api/profile?action=password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `oldPassword=${encodeURIComponent(oldPassword)}&newPassword=${encodeURIComponent(newPassword)}`,
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    hidePasswordModal();
+                } else {
+                    showMessage(data.error || '修改失败', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('修改密码失败:', error);
+                showMessage('修改密码失败', 'error');
+            });
+        });
+
+        // 页面加载时检查登录状态并获取用户信息
+        document.addEventListener('DOMContentLoaded', function() {
+            checkLogin();
+            loadProfile();
+        });
+    </script>
+</body>
+</html>

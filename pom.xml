@@ -45,6 +45,13 @@
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
         </dependency>
+
+        <!-- Apache POI Excel处理库 -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
     </dependencies>
 
     <!-- 构建配置 -->
@@ -74,7 +81,7 @@
                 <configuration>
                     <failOnMissingWebXml>false</failOnMissingWebXml>
                     <warSourceDirectory>WebContent</warSourceDirectory>
-                    <warSourceExcludes>WEB-INF/lib/*.jar</warSourceExcludes>
+                    <packagingExcludes>WEB-INF/web.xml</packagingExcludes>
                 </configuration>
             </plugin>
         </plugins>

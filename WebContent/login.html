@@ -323,6 +323,7 @@
             <div class="login-header">
                 <h1>人事管理系统</h1>
                 <p>欢迎登录，管理您的人力资源</p>
+                <div id="version-info" style="font-size: 12px; color: var(--text-muted); margin-top: 8px;"></div>
             </div>
             
             <div class="login-tabs">
@@ -365,6 +366,10 @@
             <div id="register-form" class="login-form">
                 <div class="error-message" id="register-error"></div>
                 
+                <div style="background-color: var(--accent-subtle); padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; color: var(--accent-primary);">
+                    注册用户默认拥有普通用户权限，管理员用户需由系统管理员添加。
+                </div>
+                
                 <form id="registerForm" onsubmit="handleRegister(event)">
                     <div class="form-group">
                         <label>用户名</label>
@@ -382,7 +387,7 @@
                         <label>邮箱</label>
                         <input type="email" id="regEmail" placeholder="请输入邮箱" required>
                     </div>
-                    <button type="submit" class="btn-login">注册</button>
+                    <button type="submit" class="btn-login">注册为普通用户</button>
                 </form>
                 
                 <div class="divider">
@@ -407,7 +412,19 @@
         document.addEventListener('DOMContentLoaded', function() {
             const savedTheme = localStorage.getItem('theme') || 'light';
             document.documentElement.setAttribute('data-theme', savedTheme);
+            loadVersionInfo();
         });
+        
+        async function loadVersionInfo() {
+            try {
+                const response = await fetch('api/version');
+                const data = await response.json();
+                document.getElementById('version-info').textContent = 
+                    `版本: ${data.version} | 构建时间: ${data.buildTime}`;
+            } catch (error) {
+                document.getElementById('version-info').textContent = '版本信息加载失败';
+            }
+        }
         
         function showTab(tab) {
             document.querySelectorAll('.login-tab').forEach(el => el.classList.remove('active'));

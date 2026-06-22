@@ -1,5 +1,6 @@
 package com.hr.servlet;
 
+import com.google.gson.Gson;
 import com.hr.dao.DepartmentDAO;
 import com.hr.entity.Department;
 
@@ -15,24 +16,53 @@ import java.util.List;
 @WebServlet("/api/department")
 public class DepartmentServlet extends HttpServlet {
     private DepartmentDAO dao = new DepartmentDAO();
+    private static final Gson gson = new Gson();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("application/json;charset=UTF-8");
         PrintWriter out = resp.getWriter();
 
+        String action = req.getParameter("action");
         String idParam = req.getParameter("id");
+
+        // 获取树形结构
+        if ("tree".equals(action)) {
+            List<Department> tree = dao.getTree();
+            out.print(gson.toJson(tree));
+            out.flush();
+            return;
+        }
+
+        // 获取所有部门列表
+        if ("list".equals(action)) {
+            List<Department> list = dao.list();
+            out.print(gson.toJson(list));
+            out.flush();
+            return;
+        }
+
+        // 根据父ID获取子部门
+        if ("children".equals(action) && idParam != null) {
+            List<Department> list = dao.listByParentId(Integer.parseInt(idParam));
+            out.print(gson.toJson(list));
+            out.flush();
+            return;
+        }
+
+        // 根据ID获取单个部门
         if (idParam != null) {
             Department dept = dao.getById(Integer.parseInt(idParam));
             if (dept != null) {
-                out.print(deptToJson(dept));
+                out.print(gson.toJson(dept));
             } else {
                 resp.setStatus(404);
                 out.print("{\"error\":\"Department not found\"}");
             }
         } else {
+            // 默认返回扁平化列表（保持向后兼容）
             List<Department> list = dao.list();
-            out.print(deptListToJson(list));
+            out.print(gson.toJson(list));
         }
         out.flush();
     }
@@ -40,12 +70,20 @@ public class DepartmentServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("application/json;charset=UTF-8");
+        req.setCharacterEncoding("UTF-8");
         PrintWriter out = resp.getWriter();
 
         Department dept = new Department();
         dept.setDeptName(req.getParameter("deptName"));
         dept.setDeptLocation(req.getParameter("deptLocation"));
         dept.setDeptPhone(req.getParameter("deptPhone"));
+
+        String parentIdStr = req.getParameter("parentId");
+        if (parentIdStr != null && !parentIdStr.isEmpty()) {
+            dept.setParentId(Integer.parseInt(parentIdStr));
+        } else {
+            dept.setParentId(0);  // 默认顶级部门
+        }
 
         boolean success = dao.add(dept);
         if (success) {
@@ -61,6 +99,7 @@ public class DepartmentServlet extends HttpServlet {
     @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("application/json;charset=UTF-8");
+        req.setCharacterEncoding("UTF-8");
         PrintWriter out = resp.getWriter();
 
         Department dept = new Department();
@@ -68,6 +107,13 @@ public class DepartmentServlet extends HttpServlet {
         dept.setDeptName(req.getParameter("deptName"));
         dept.setDeptLocation(req.getParameter("deptLocation"));
         dept.setDeptPhone(req.getParameter("deptPhone"));
+
+        String parentIdStr = req.getParameter("parentId");
+        if (parentIdStr != null && !parentIdStr.isEmpty()) {
+            dept.setParentId(Integer.parseInt(parentIdStr));
+        } else {
+            dept.setParentId(0);
+        }
 
         boolean success = dao.update(dept);
         if (success) {
@@ -98,36 +144,5 @@ public class DepartmentServlet extends HttpServlet {
             out.print("{\"error\":\"Missing id parameter\"}");
         }
         out.flush();
-    }
-
-    private String deptToJson(Department dept) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{");
-        sb.append("\"deptId\":").append(dept.getDeptId()).append(",");
-        sb.append("\"deptName\":\"").append(escapeJson(dept.getDeptName())).append("\",");
-        sb.append("\"deptLocation\":\"").append(escapeJson(dept.getDeptLocation())).append("\",");
-        sb.append("\"deptPhone\":\"").append(escapeJson(dept.getDeptPhone())).append("\"");
-        sb.append("}");
-        return sb.toString();
-    }
-
-    private String deptListToJson(List<Department> list) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("[");
-        for (int i = 0; i < list.size(); i++) {
-            if (i > 0) sb.append(",");
-            sb.append(deptToJson(list.get(i)));
-        }
-        sb.append("]");
-        return sb.toString();
-    }
-
-    private String escapeJson(String str) {
-        if (str == null) return "";
-        return str.replace("\\", "\\\\")
-                  .replace("\"", "\\\"")
-                  .replace("\n", "\\n")
-                  .replace("\r", "\\r")
-                  .replace("\t", "\\t");
     }
 }

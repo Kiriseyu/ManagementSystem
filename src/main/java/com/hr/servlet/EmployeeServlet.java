@@ -2,23 +2,48 @@ package com.hr.servlet;
 
 import com.hr.dao.EmployeeDAO;
 import com.hr.entity.Employee;
+import com.hr.util.ExcelUtil;
 
 import javax.servlet.ServletException;
+import javax.servlet.annotation.MultipartConfig;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.sql.Date;
 import java.util.List;
 
 @WebServlet("/api/employee")
+@MultipartConfig  // 支持文件上传
 public class EmployeeServlet extends HttpServlet {
     private EmployeeDAO dao = new EmployeeDAO();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String action = req.getParameter("action");
+
+        // 导出Excel
+        if ("export".equals(action)) {
+            List<Employee> list = dao.list();
+            // 设置响应头，提示浏览器下载文件
+            resp.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            resp.setHeader("Content-Disposition", "attachment;filename=employees.xlsx");
+
+            try {
+                ExcelUtil.exportEmployees(list, resp.getOutputStream());
+            } catch (IOException e) {
+                e.printStackTrace();
+                resp.setStatus(500);
+                resp.getWriter().print("{\"error\":\"导出失败\"}");
+            }
+            return;
+        }
+
+        // 原有的doGet逻辑 - 查询员工
         resp.setContentType("application/json;charset=UTF-8");
         PrintWriter out = resp.getWriter();
 
@@ -45,6 +70,50 @@ public class EmployeeServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String action = req.getParameter("action");
+
+        // 导入Excel
+        if ("import".equals(action)) {
+            resp.setContentType("application/json;charset=UTF-8");
+            PrintWriter out = resp.getWriter();
+
+            try {
+                // 获取上传的文件
+                Part filePart = req.getPart("file");
+                if (filePart == null) {
+                    out.print("{\"success\":false,\"message\":\"请选择要上传的文件\"}");
+                    return;
+                }
+
+                String fileName = filePart.getSubmittedFileName();
+                if (fileName == null || !fileName.matches(".*\\.(xlsx|xls)$")) {
+                    out.print("{\"success\":false,\"message\":\"请上传Excel文件(.xlsx或.xls)\"}");
+                    return;
+                }
+
+                // 解析Excel
+                try (InputStream inputStream = filePart.getInputStream()) {
+                    List<Employee> employees = ExcelUtil.importEmployees(inputStream);
+
+                    int successCount = 0;
+                    for (Employee emp : employees) {
+                        // 跳过ID，让数据库自动生成
+                        emp.setEmpId(null);
+                        if (dao.add(emp)) {
+                            successCount++;
+                        }
+                    }
+
+                    out.print("{\"success\":true,\"message\":\"成功导入\" + successCount + \"条记录，总共\" + employees.size() + \"条\"}");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                out.print("{\"success\":false,\"message\":\"导入失败:\" + e.getMessage() + \"\"}");
+            }
+            return;
+        }
+
+        // 原有的doPost逻辑 - 添加员工
         resp.setContentType("application/json;charset=UTF-8");
         PrintWriter out = resp.getWriter();
 
